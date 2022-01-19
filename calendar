@@ -1,0 +1,21 @@
+//все это вставлем в расширенный редактор запросов в power query
+let
+    Source = #date(2021, 1, 1), //тут надо изменить на нужное начало отсчета дат
+    ListDate = List.Dates(Source, Number.From(DateTime.LocalNow())- Number.From(Source) ,#duration(1,0,0,0)),
+    #"Converted to Table" = Table.FromList(ListDate, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+    #"Renamed Columns" = Table.RenameColumns(#"Converted to Table",{{"Column1", "Дата"}}),
+    #"Inserted Day of Week" = Table.AddColumn(#"Renamed Columns", "DayOfWeek", each Date.DayOfWeek([Дата]), type number),
+    InsertDayName = Table.AddColumn(#"Inserted Day of Week", "День недели", each Date.ToText([Дата], "dddd"), type text),
+    #"Inserted Week of Year" = Table.AddColumn(InsertDayName, "Номер недели", each Date.WeekOfYear([Дата]), type number),
+    #"Inserted Week of Month" = Table.AddColumn(#"Inserted Week of Year", "Неделя месяца", each Date.WeekOfMonth([Дата]), type number),
+    #"InsertedWeek" = Table.AddColumn(#"Inserted Week of Month", "Неделя", each Date.ToText(Date.StartOfWeek([Дата])) & " - " & Date.ToText(Date.EndOfWeek([Дата]))),
+    #"Inserted Quarter" = Table.AddColumn(InsertedWeek, "Quarter", each Date.QuarterOfYear([Дата]), type number),
+    #"Inserted Month" = Table.AddColumn(#"Inserted Quarter", "Номер месяца", each Date.Month([Дата]), type number),
+    InsertMonthName = Table.AddColumn(#"Inserted Month", "Месяц", each Date.ToText([Дата], "MMMM"), type text),
+    #"Inserted Year" = Table.AddColumn(InsertMonthName, "Год", each Date.Year([Дата]), type number),
+    #"Inserted indexMonth" = Table.AddColumn(#"Inserted Year", "IndexMonth", each Text.From([Год])&"-"&Text.PadStart(Text.From([Номер месяца]),2,"0")),
+    #"Inserted indexWeek" = Table.AddColumn(#"Inserted indexMonth", "IndexWeek", each if Date.Year(Date.EndOfWeek([Дата])) - Date.Year(Date.StartOfWeek([Дата])) = 1 then Number.ToText(Date.Year(Date.StartOfWeek([Дата]))) & "-" & Text.PadStart(Number.ToText(Date.WeekOfYear(Date.StartOfWeek([Дата]))),2,"0") else Number.ToText(Date.Year([Дата])) & "-" & Text.PadStart(Number.ToText(Date.WeekOfYear([Дата])),2,"0")),   
+    #"Inserted End of Month" = Table.AddColumn(#"Inserted indexWeek", "EndOfMonth", each Date.EndOfMonth([Дата]), type date),
+    #"Changed Type" = Table.TransformColumnTypes(#"Inserted End of Month",{{"Дата", type date}})
+in
+    #"Changed Type"
